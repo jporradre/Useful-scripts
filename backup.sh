@@ -20,7 +20,7 @@ IP_BCK=192.168.1.253
 PATH_LOC=/mnt/datos
 PATH_BCK=respaldos/jp
 PASS_FILE=/opt/Scripts/.passFTP
-UPL_METH=FTP
+UPL_METH="FTP"
 MAX_RETRIES=20
 USR_SRV_UPL=ftp
 
@@ -45,7 +45,7 @@ function test_conn {
 
 #FTP
 function ftp_backup {
-	
+
 	if test_conn $IP_BCK 21 "FTP" -eq 0 ; then
 		log "[Error] Can't connect remote server. Aborting backup";
 		exit 1;	
@@ -53,7 +53,7 @@ function ftp_backup {
 	#Checks whether required function exists
 	command -v lftp >/dev/null 2>&1 || log "[ERROR] The local system does not have lftp command. Aborting backup.";
 
-	lftp -e "set ftp:list-options -a; mirror -cRPv $1 $PATH_BCK --delete --log=/var/log/resp$2.log; exit;" -u $USR_SRV_UPL,$3 ftp://$IP_BCK;
+        lftp -e "set ftp:list-options -a; mirror -cRPv $1 $PATH_BCK --delete --log=/var/log/resp$2.log; exit;" -u $USR_SRV_UPL,$3 ftp://$IP_BCK;
 }
 
 #SSH with key access
@@ -99,9 +99,9 @@ function backup {
 	DIR_NAME=`echo "$1" | sed 's|\/| |g' | awk '{print $4}'`;
 
 	if [[ $UPL_METH = "FTP" ]]; then
-		ftp_backup $1 $DIR_NAME $PASS || exit 1
+		ftp_backup "$1" "$DIR_NAME" "$PASS" || exit 1
 	elif [[ $UPL_METH = "SSH" ]]; then
-		ssh_backup $1 $DIR_NAME $PASS || exit 1
+		ssh_backup "$1" "$DIR_NAME" "$PASS" || exit 1
 	else
 		log "[ERROR] Incorrect backup protocol specified.";
 		exit 1;
@@ -119,10 +119,11 @@ log "[INFO] Starts backup";
 # Iterate all folders inside specificated one, and uploads modifications relative to its server image
 for DIR in $PATH_LOC/*/ ; do
 
-	backup $DIR && log "[INFO] End of backup" || log "[ERROR] Backup was not done due to errors. Check logs for more information." && exit 1; 
+	backup $DIR || (log "[ERROR] Backup was not done due to errors. Check logs for more information." && exit 1); 
 	
 done;
  
+log "[INFO] Backup has successfully ended" 
 
 
 exit 0;
