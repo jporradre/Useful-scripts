@@ -53,7 +53,7 @@ function ftp_backup {
 	#Checks whether required function exists
 	command -v lftp >/dev/null 2>&1 || log "[ERROR] The local system does not have lftp command. Aborting backup.";
 
-        lftp -e "set ftp:list-options -a; mirror -cRPv $1 $PATH_BCK --delete --log=/var/log/resp$2.log; exit;" -u $USR_SRV_UPL,$3 ftp://$IP_BCK;
+        lftp -e "set ftp:list-options -a; mirror -cRPv $1 $PATH_BCK/$2 --delete --log=/var/log/resp$2.log; exit;" -u $USR_SRV_UPL,$3 ftp://$IP_BCK;
 }
 
 #SSH with key access
@@ -75,7 +75,7 @@ function ssh_backup {
  	while [ $? -ne 0 -a $i -lt $MAX_RETRIES ]
  	do
  		i=$(($i+1))
-		rsync --backup --backup-dir=`date +%Y.%m.%d` --delete --progress --log-file=/var/log/resp$2.log --rsh="ssh -c arcfour -l $USR_SRV_UPL" -a $1 $PATH_BCK
+		rsync --backup --backup-dir=`date +%Y.%m.%d` --delete --progress --log-file=/var/log/resp$2.log --rsh="ssh -c arcfour -l $USR_SRV_UPL" -a $1 $PATH_BCK/$2
 	done
  
 	if [ $i -eq $MAX_RETRIES ]; then
