@@ -98,6 +98,12 @@ function backup {
 	log "[INFO] Started to backup folder  "$1;	
 	DIR_NAME=`echo "$1" | sed 's|\/| |g' | awk '{print $4}'`;
 
+	#Creates log file for folder if not exists, and set its permissions
+	if [[ -ne /var/log/resp$2.log ]];
+		touch /var/log/resp"$DIR_NAME".log;
+		chmod 700 resp"$DIR_NAME".log;
+	fi
+	
 	if [[ $UPL_METH = "FTP" ]]; then
 		ftp_backup "$1" "$DIR_NAME" "$PASS" || exit 1
 	elif [[ $UPL_METH = "SSH" ]]; then
