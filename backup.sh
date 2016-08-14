@@ -1,6 +1,6 @@
 #!/bin/bash -
 
-#Copyright (C) 2015  Juan Pablo Orradre
+#Copyright (C) 2016  Juan Pablo Orradre
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -18,15 +18,18 @@
 #Script variables
 IP_BCK=192.168.1.253
 PATH_LOC=/mnt/datos
+PATH_ARRAY=( "/home/jp/Documentos" "/home/jp/Otros" "/home/jp/Owncloud" )
+TO_BACKUP="ARRAY"
 PATH_BCK=respaldos/jp
-PASS_FILE=/opt/Scripts/.passFTP
+PASS_FILE=/home/jp/Documentos/Claves/.passFTP
 UPL_METH="FTP"
 MAX_RETRIES=20
 USR_SRV_UPL=ftp
+MAIN_LOG=/var/log/backup.log
 
 
 function log {
-	echo `date +"%d-%m-%y %H:%I:%S"`" - "$1 >> /var/log/respVMs.log
+	echo `date +"%d-%m-%y %H:%I:%S"`" - "$1 >> $MAIN_LOG
 	echo $1
 }
 
@@ -47,13 +50,17 @@ function test_conn {
 function ftp_backup {
 
 	if test_conn $IP_BCK 21 "FTP" -eq 0 ; then
-		log "[Error] Can't connect remote server. Aborting backup";
+		log "[ERROR] Can't connect remote server. Aborting backup";
 		exit 1;	
 	fi
 	#Checks whether required function exists
 	command -v lftp >/dev/null 2>&1 || log "[ERROR] The local system does not have lftp command. Aborting backup.";
 
-        lftp -e "set ftp:list-options -a; mirror -cRPv $1 $PATH_BCK/$2 --delete --log=/var/log/resp$2.log; exit;" -u $USR_SRV_UPL,$3 ftp://$IP_BCK;
+        DIR_BCK_LOG=/var/log/backup_$2.log
+        touch $DIR_BCK_LOG
+        chmod 600 $DIR_BCK_LOG
+
+        lftp -e "set ftp:list-options -a; mirror -cRPv $1 $PATH_BCK/$2 --delete --log=$DIR_BCK_LOG; exit;" -u $USR_SRV_UPL,$3 ftp://$IP_BCK;
 }
 
 #SSH with key access
@@ -91,19 +98,13 @@ function backup {
 		exit 1;
 	fi
 
-	#Load server pass from respective file
+	#Loads server pass from respective file
 	PASS=`cat $PASS_FILE`
 	
     	#Backups the current folder
 	log "[INFO] Started to backup folder  "$1;	
-	DIR_NAME=`echo "$1" | sed 's|\/| |g' | awk '{print $4}'`;
+	DIR_NAME=`echo "$1" | sed 's|\/| |g' | awk '{print $NF}'`;
 
-	#Creates log file for folder if not exists, and set its permissions
-	if [[ -ne /var/log/resp$2.log ]];
-		touch /var/log/resp"$DIR_NAME".log;
-		chmod 700 resp"$DIR_NAME".log;
-	fi
-	
 	if [[ $UPL_METH = "FTP" ]]; then
 		ftp_backup "$1" "$DIR_NAME" "$PASS" || exit 1
 	elif [[ $UPL_METH = "SSH" ]]; then
@@ -113,23 +114,44 @@ function backup {
 		exit 1;
 	fi
 	
-	#End uploading folder
+	#Ends uploading folder
 	log "[INFO] Ended to backup folder "$1;
 	
 }
 
 
+touch $MAIN_LOG
+chmod 600 $MAIN_LOG
+
 # Backup process start
 log "[INFO] Starts backup";
 
-# Iterate all folders inside specificated one, and uploads modifications relative to its server image
-for DIR in $PATH_LOC/*/ ; do
 
-	backup $DIR || (log "[ERROR] Backup was not done due to errors. Check logs for more information." && exit 1); 
+# Iterates selected folders mirroring them to their server images
+if [[ $TO_BACKUP = "LOCAL" ]]; then
+
+        log "[INFO] Local folder backup is going to start";
+
+	for DIR in $PATH_LOC/*/ ; do
+
+		backup $DIR || (log "[ERROR] Backup was not done due to errors. Check logs for more information." && exit 1); 
 	
-done;
- 
+	done;
+
+else
+
+        log "[INFO] Selected folders backup is going to start";
+
+	for DIR in "${PATH_ARRAY[@]}" ; do
+
+		backup $DIR || (log "[ERROR] Backup was not done due to errors. Check logs for more information." && exit 1); 
+	
+	done;
+fi
+
+
 log "[INFO] Backup has successfully ended" 
 
 
 exit 0;
+
